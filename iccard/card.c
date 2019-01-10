@@ -340,7 +340,8 @@ static int _Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsi
 	int n = 0;
 
 	unsigned char statues = FALSE;
-
+	static unsigned int last_len = 0; 
+	static unsigned char ingore_flag = 0;
     unsigned char num=0;
 	int ret_len = 0;
 	unsigned char nbit = 0;
@@ -462,13 +463,23 @@ static int _Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsi
 	
 
 end:
-
+	if((ret_len != 0)&&(last_len != 0) && (last_len != ret_len))
+	{
+		ingore_flag = 1;
+	}
+	else if(ret_len == 0)
+	{
+		ingore_flag = 0;
+	}
+	last_len = ret_len;
+	
+	
 	if(ret_len > 0)
 	{
 		HextoStr(buff,ret_len,log_buf);
 		log_write(log_buf);
 	}
-	if(ret_len != buff[0] + 1)
+	if((ret_len != buff[0] + 1) || ingore_flag)
 		return 0;
 	//printf("ret_len=%d\n",ret_len);
 	return ret_len;

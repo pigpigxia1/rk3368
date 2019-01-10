@@ -8,6 +8,8 @@
 #include  <pthread.h>
 #include <sys/select.h>
 #include <time.h>
+#include "rili/rili.h"
+#include <string.h>
 
 const char *Serial_Dev = "/dev/ttyS0";
 
@@ -42,31 +44,53 @@ int serial_send( int fd, char *Data );
 int serial_sendx(int fd, unsigned char data[], int num);
 int set_opt(int fd,int nSpeed,int nBits,char nEvent,int nStop);
 
-void * Pthread_Serial( void *arg )
+void * Pthread_Serial_Rx( void *arg )
+{
+	unsigned char buff[512];
+	int ret;
+	int n;
+	
+	printf("start RX\n");
+	while(1)
+	{
+		usleep(200000);
+		ret = read_pack_rili(S_fd,buff,512);
+		if(ret > 0)
+		{
+			printf("\nread len=%d\n",ret);
+			for(n = 0; n < ret; n++)
+			{
+				printf("%x\t",buff[n]);
+			}
+		}
+	}
+}
+void * Pthread_Serial_Tx( void *arg )
 {
     int n=0;
-    int ret;
+    //int ret;
 	fd_set readfs;
     struct termios oldstdio;
 	struct timeval Timeout;
     unsigned char Rx_Data[100];
-    unsigned char Tx_Data[50]={0x80,0x05,0x90,0xB6,0x01,0x00,0x00};
+    unsigned char Tx_Data[100]={0x55,0x03,0x90,0xB6,0x01,0x00,0xAA};
     
-    S_fd = open( Serial_Dev, O_RDWR);
-    if( -1==S_fd ) 
-        pthread_exit(NULL);
-    printf("tty_fd = %d\n",S_fd);
-    ret = set_opt(S_fd,9600,8,'N',1);
-    if(ret == -1)
-    {
-         pthread_exit(NULL);
-    }
+    
 	
 	FD_ZERO(&readfs);
 	FD_SET(S_fd, &readfs);
 	Timeout.tv_usec = 0;
 	Timeout.tv_sec  = 1;
 	
+	for(n = 2;n < 97;n++)
+	{
+		Tx_Data[n] = n;
+	}
+	Tx_Data[97] = 0x11;
+	Tx_Data[1] = 96;
+	Tx_Data[98] = xor_check(&Tx_Data[2],Tx_Data[1]);
+	Tx_Data[99] = 0xAA;
+	//printf("data xor = %x\n",Tx_Data[5]);
 	/*printf("stop RF\n");
 	Tx_Data[4] = 0x03;  //stop 
 	serial_sendx(S_fd, Tx_Data, 7);
@@ -86,15 +110,13 @@ void * Pthread_Serial( void *arg )
 	}
 	printf("\n");*/
 	usleep(100000);
-    
+    printf("start TX\n");
     while(1)
     {   
-		//serial_sendx(S_fd, Tx_Data, 7);
+		serial_sendx(S_fd, Tx_Data, 100);
+		usleep(200000);
 		
-		serial_sendx(S_fd, Tx_Data, 7);
-		sleep(1);
-		
-		ret = read( S_fd, Rx_Data, 100);
+		/*ret = read( S_fd, Rx_Data, 100);
 		if(ret > 0)
 		{
 			printf("\nread len=%d\n",ret);
@@ -102,7 +124,7 @@ void * Pthread_Serial( void *arg )
 			{
 				printf("%x\t",Rx_Data[n]);
 			}
-		}
+		}*/
 				
 		 /*ret = select(S_fd+1, &readfs, NULL, NULL, &Timeout);
 		if(ret > 0)
@@ -122,7 +144,7 @@ void * Pthread_Serial( void *arg )
 				
 			}
 		} */
-		printf("end\n");
+		//printf("end\n");
 		
 		//tcflush(S_fd,TCIOFLUSH);
         //ret = read( S_fd, Rx_Data, 100);
@@ -170,11 +192,34 @@ void * Pthread_Serial( void *arg )
 int main()
 {
 #if 1
-    pthread_t pthread_id;
+	int ret = 0;
+    pthread_t pthread_id_rx;
+	pthread_t pthread_id_tx;
 	unsigned char Tx_Data[20]={0x80,0x05,0x90,0xB6,0x01,0x00,0x00};
+	char *ptr;
+	char c = 0x64;
     
+	unsigned char test_buff[10] = {0x01,0x02,0x64,0x66,0x0};
+	
+	ptr = strchr(test_buff,0x64);
+	//if(ptr)
+		printf("test test_buff[] = %x\n",*ptr);
+	//printf("test c = %c\n",(char)c);
+	
+	
+	S_fd = open( Serial_Dev, O_RDWR);
+    if( -1==S_fd ) 
+        pthread_exit(NULL);
+    printf("tty_fd = %d\n",S_fd);
+    ret = set_opt(S_fd,38400,8,'N',1);
+    if(ret == -1)
+    {
+         return -1;
+    }
+	
     //Create a thread
-    pthread_create( &pthread_id, NULL, &Pthread_Serial, NULL );
+    pthread_create( &pthread_id_rx, NULL, &Pthread_Serial_Rx, NULL );
+	pthread_create( &pthread_id_tx, NULL, &Pthread_Serial_Tx, NULL );
     usleep(1000);
 	
 	while(1)
