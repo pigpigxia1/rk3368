@@ -485,12 +485,13 @@ end:
 输出:                                                  
          buff：数据缓存	
 		len  :缓存长度
-		flag:SET_FLAG(3,0,0)读HID卡号;SET_FLAG(0,0,gpio):读IC卡
+		flag:SET_FLAG(3,0,0)读HID卡号;SET_FLAG(mode,0,gpio):读IC卡,mode = I2C_INTERFACE|READ_POLL 三代循环读卡 mode=READ_POLL ：uface1&2&c循环读卡
 return :读出字节数                                                    
 *****************************************************************/
 int Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsigned int flag)
 {
 	unsigned char block;
+	unsigned char interface_mode = 0;
 	unsigned int read_mode = 0;
 	unsigned int gpio = 0;
 	unsigned char picc_uid[15];
@@ -505,10 +506,11 @@ int Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsigned int
 		return 0;
 	}
 	
-	read_mode = GET_MODE(flag);
+	read_mode = GET_MODE(flag)&0x0f;
+	interface_mode = GET_MODE(flag)&0xf0;
 	gpio = GET_GPIO(flag);
 	block = GET_BLOCK(flag);
-	
+	pcd_Init(interface_mode>>4);
 	//printf("mode %x gpio %d block %x\n",read_mode,gpio,block);
 	switch(read_mode)
 	{

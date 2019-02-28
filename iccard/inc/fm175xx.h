@@ -69,8 +69,14 @@
 
 #define UART_SPEED_115200 0x7A
 
+typedef enum interface{
+	UART,
+	I2C,
+	SPI
+}interface_t;
+
 //unsigned char FM175XX_IRQ;
-void pcd_Init(void);
+void pcd_Init(interface_t mode);
 void pcd_DeInit();
 void pcd_RST(int fd,int gpio);
 void SetSpeed(int fd,int speed);

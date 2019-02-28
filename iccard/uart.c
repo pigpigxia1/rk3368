@@ -14,7 +14,7 @@
 
 
 static int S_fd;
-const char *Serial_Dev = "/dev/ttyS0";
+const char *Serial_Dev = "/dev/ttyS1";
 
 int set_opt(int fd,int nSpeed,int nBits,char nEvent,int nStop)
 {

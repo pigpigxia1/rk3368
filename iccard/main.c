@@ -35,8 +35,13 @@
 #include "string.h"
 
 #include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <strings.h>
 
-
+#define I2C_FILE_NAME "/dev/i2c-1"
 
 const unsigned char new_key[8] = {0x6d,0x69,0x6c,0x6c,0x69,0x6f,0xff,0xff};
 //unsigned char default_key[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
@@ -63,8 +68,6 @@ int main(void)
                    
     //pcd_Init();                                                         // ∂¡ø®–æ∆¨≥ı ºªØ               
     
-	
-	fd = uart_open(9600,8,'N',1);
 	
 	//printf("%s_%d\n",__FUNCTION__,__LINE__);
 	
@@ -101,8 +104,18 @@ int main(void)
 	Write_Card_Info(fd,default_key,new_key,Pbuf);*/
 	//fd = uart_init(9600,8,'N',1);
 	
-	//printf("enter mode:(0 or 1)\n");
-	//scanf("%x",&cmd);
+	printf("enter mode:(0 or 1)\n");
+	scanf("%x",&cmd);
+	
+	if(cmd == 0){
+		fd = uart_open(9600,8,'N',1);
+	}else if(cmd ==1){
+		if ((fd = open(I2C_FILE_NAME, O_RDWR)) < 0) {
+			printf("Unable to open i2c control file");
+			return -1;
+        	//exit(1);
+		}
+	}
 	while(1)
 	{
 		//TyteA_Test(fd);
@@ -112,7 +125,10 @@ int main(void)
 		
 		//fd = uart_init(9600,8,'N',1);
 		gettimeofday(&start, NULL);
-		len = Read_Card(fd,new_key,dat_buf,2048,SET_FLAG(3,0,0));
+		if(cmd == 0)
+			len = Read_Card(fd,new_key,dat_buf,2048,SET_FLAG(cmd<<4,0,1019));
+		else if(cmd == 1)
+			len = Read_Card(fd,new_key,dat_buf,2048,SET_FLAG(cmd<<4,0,55));
 		//len = Get_Uid(fd,dat_buf,2048);
 		gettimeofday(&end, NULL);
 		//t2 = clock();

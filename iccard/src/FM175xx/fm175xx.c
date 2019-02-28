@@ -17,8 +17,10 @@
 **
 **--------------------------------------------------------------------------------------------------------
 */
-
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include "fm175xx.h"
 #include "Utility.h"
@@ -31,8 +33,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "uart.h"
 
+#define FM17550_ADDR  0x28
 
 #define GPIO_MAGIC    'O'
 #define GPIO_REQUEST_NR    0x01
@@ -55,103 +61,97 @@ void Delay100us(int time)
 {
 	usleep(100*time);
 }*/
+static interface_t gmode;
+
+static int get_i2c_register(int file,
+                            unsigned short addr,
+                            unsigned char reg,
+                            unsigned char *val,
+				int len) {
+    //unsigned char inbuf, outbuf;
+    unsigned char outbuf;
+    struct i2c_rdwr_ioctl_data packets;
+    struct i2c_msg messages[2];
+ 
+    /*
+     * In order to read a register, we first do a "dummy write" by writing
+     * 0 bytes to the register we want to read from.  This is similar to
+     * the packet in set_i2c_register, except it's 1 byte rather than 2.
+     */
+    outbuf = reg;
+    messages[0].addr  = addr;
+    messages[0].flags = 0;
+    messages[0].len   = sizeof(outbuf);
+    messages[0].buf   = &outbuf;
+ 
+    /* The data will get returned in this structure */
+    messages[1].addr  = addr;
+    messages[1].flags = I2C_M_RD/* | I2C_M_NOSTART*/;
+    messages[1].len   = len;
+    messages[1].buf   = val;
+ 
+    /* Send the request to the kernel and get the result back */
+    packets.msgs      = messages;
+    packets.nmsgs     = 2;
+    if(ioctl(file, I2C_RDWR, &packets) < 0) {
+        perror("Unable to send data");
+        return 1;
+    }
+    //*val = inbuf;
+ 
+    return 0;
+}
+
+
+int set_i2c_register(int file,
+                            unsigned char addr,
+                            unsigned char reg,
+                            unsigned char *value,
+			    	int len) {
+ 
+    unsigned char *outbuf = (unsigned char *)malloc(sizeof(unsigned char)*(len+1));
+	if(outbuf==NULL)
+	{
+		perror("MALLOC");
+		return -1;
+	}
+    struct i2c_rdwr_ioctl_data packets;
+    struct i2c_msg messages[1];
+ 
+    messages[0].addr  = addr;
+    messages[0].flags = 0;
+    messages[0].len   = len+1;	
+    messages[0].buf   = outbuf;
+	
+ 
+    /* The first byte indicates which register we'll write */
+    outbuf[0] = reg;
+ 
+    /* 
+     * The second byte indicates the value to write.  Note that for many
+     * devices, we can write multiple, sequential registers at once by
+     * simply making outbuf bigger.
+     */
+//    outbuf[1] = value;
+	memcpy(outbuf+1, value, len);
+ 
+    /* Transfer the i2c packets to the kernel and verify it worked */
+    packets.msgs  = messages;
+    packets.nmsgs = 1;
+    if(ioctl(file, I2C_RDWR, &packets) < 0) {
+        perror("Unable to send data");
+        return 1;
+    }
+ 
+    return 0;
+}
 
 
 static void uart_send(int fd,unsigned char regdata)
 {
 	write( fd,&regdata, 1);
 }
-/*
-static int set_opt(int fd,int nSpeed,int nBits,char nEvent,int nStop)
-{
-    struct termios newtio,oldtio;
-    if(tcgetattr(fd,&oldtio)!=0)
-    {
-        perror("error:SetupSerial 3\n");
-        return -1;
-    }
-    bzero(&newtio,sizeof(newtio));
-    //ʹ�ܴ��ڽ���
-    newtio.c_cflag |= CLOCAL | CREAD;
-    newtio.c_cflag &= ~CSIZE;
 
-    newtio.c_lflag &=~ICANON;//ԭʼģʽ
-
-    //newtio.c_lflag |=ICANON; //��׼ģʽ
-
-    //���ô�������λ
-    switch(nBits)
-    {
-        case 7:
-            newtio.c_cflag |= CS7;
-            break;
-        case 8:
-            newtio.c_cflag |=CS8;
-            break;
-    }
-    //������żУ��λ
-    switch(nEvent)
-
-    {
-        case 'O':
-            newtio.c_cflag |= PARENB;
-            newtio.c_cflag |= PARODD;
-            newtio.c_iflag |= (INPCK | ISTRIP);
-            break;
-        case 'E':
-            newtio.c_iflag |= (INPCK | ISTRIP);
-            newtio.c_cflag |= PARENB;
-            newtio.c_cflag &= ~PARODD;
-            break;
-        case 'N':
-            newtio.c_cflag &=~PARENB;
-            break;
-    }
-    //���ô��ڲ�����
-    switch(nSpeed)
-    {
-        case 2400:
-            cfsetispeed(&newtio,B2400);
-            cfsetospeed(&newtio,B2400);
-            break;
-        case 4800:
-            cfsetispeed(&newtio,B4800);
-            cfsetospeed(&newtio,B4800);
-            break;
-        case 9600:
-            cfsetispeed(&newtio,B9600);
-            cfsetospeed(&newtio,B9600);
-            break;
-        case 115200:
-            cfsetispeed(&newtio,B115200);
-            cfsetospeed(&newtio,B115200);
-            break;
-        case 460800:
-            cfsetispeed(&newtio,B460800);
-            cfsetospeed(&newtio,B460800);
-            break;
-        default:
-            cfsetispeed(&newtio,B9600);
-            cfsetospeed(&newtio,B9600);
-            break;
-    }
-    //����ֹͣλ
-    if(nStop == 1)
-        newtio.c_cflag &= ~CSTOPB;
-    else if(nStop == 2)
-        newtio.c_cflag |= CSTOPB;
-    newtio.c_cc[VTIME] = 1;
-    newtio.c_cc[VMIN] = 0;
-    tcflush(fd,TCIFLUSH);
-
-    if(tcsetattr(fd,TCSANOW,&newtio)!=0)
-    {
-        perror("com set error\n");
-        return -1;
-    }
-    return 0;
-}
-*/
 
 static unsigned char uart_read(int fd)
 {
@@ -212,8 +212,10 @@ static unsigned char uart_readbyte(int fd)
 ** output parameters:   N/A
 ** Returned value:      
 *********************************************************************************************************/
-void pcd_Init(void)
+void pcd_Init(interface_t mode)
 {
+	gmode = mode;
+	//printf("interface mode = %d\n",mode);
     //SPI_Init();
     //CD_CfgTPD();                                                        /* ���ø�λ�ܽ�                 */
 	
@@ -229,24 +231,41 @@ void pcd_DeInit()
 }
 static unsigned char GetReg(int fd,unsigned char Reg)
 {
-	unsigned char addr;
+	unsigned char dat;
+	if(gmode == UART){
+		unsigned char addr;
 	
-	addr = Reg | 0x80;
-	uart_send(fd,addr);
+		addr = Reg | 0x80;
+		uart_send(fd,addr);
+		
+		dat = uart_read(fd);
+	}else if(gmode == I2C){
+		if(get_i2c_register(fd, FM17550_ADDR, Reg, &dat, 1)){
+			
+			return FALSE;
+		}
+	}
+	return dat;
 	
-	return uart_read(fd);
 	
 }
 
 static unsigned char SetReg(int fd,unsigned char Reg, unsigned char value)
 {
-	unsigned char addr;
-	
-	addr = Reg & 0x7F;	
-	uart_send(fd,addr);
-	uart_read(fd);
-	uart_send(fd,value);
-	return 0;
+	if(gmode == UART){
+		unsigned char addr;
+		
+		addr = Reg & 0x7F;	
+		uart_send(fd,addr);
+		uart_read(fd);
+		uart_send(fd,value);
+	}else if(gmode == I2C){
+		if(set_i2c_register(fd, FM17550_ADDR, Reg, &value, 1)){
+			
+			return FALSE;
+		}
+	}
+	return TRUE;
 }
 
 void SetSpeed(int fd,int speed)
@@ -305,7 +324,9 @@ void pcd_RST(int fd,int gpio)
 	
 	int gpio_fd;
 	
-	set_opt(fd,9600,8,'N',1);
+	if(gmode == UART){
+		set_opt(fd,9600,8,'N',1);
+	}
 	
 	gpio_fd = open(PIN_CTR_DEV,O_RDWR);
 	if(gpio_fd < 0)
@@ -700,11 +721,15 @@ unsigned char Pcd_ConfigISOType(int fd,unsigned char data type)
 unsigned char  FM175X_SoftReset(int fd)
 {    
     Write_Reg(fd,CommandReg,SoftReset);
-	usleep(1000);
-	set_opt(fd,9600,8,'N',1);
+	if(gmode == UART){
+		usleep(1000);
+		set_opt(fd,9600,8,'N',1);
+	}
     Set_BitMask(fd,ControlReg,0x10);                               /* 17520��ʼֵ����              */
-	SetSpeed(fd,115200);
-	usleep(1000);
+	if(gmode == UART){
+		SetSpeed(fd,115200);
+		usleep(1000);
+	}
 	
 	return  TRUE  ;
 }
@@ -724,7 +749,9 @@ unsigned char FM175X_HardReset(int fd,int gpio)
 	usleep(1000);*/
 	int gpio_fd;
 	
-	set_opt(fd,9600,8,'N',1);
+	if(gmode == UART){
+		set_opt(fd,9600,8,'N',1);
+	}
 	gpio_fd = open(PIN_CTR_DEV,O_RDWR);
 	if(gpio_fd < 0)
 	{
