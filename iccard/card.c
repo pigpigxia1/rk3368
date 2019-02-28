@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "uart.h"
+#include "hid.h"
 #include "exception.h"
 //#include "cpu_card.h"
 
@@ -45,10 +46,12 @@ unsigned char Check_Machine(int fd,int gpio)
 {
 	if(machine_type == 0)
 	{
+	#ifdef ENABLE_LOG
 		if(rename(LOG_FILE, LOG_FILE_B) < 0)
 		{
 			printf("rename failed\n");
 		}
+	#endif
 		pcd_RST(fd,gpio);
 		Read_Reg(fd,ControlReg);
 		Write_Reg(fd,ControlReg, 0x10);
@@ -340,8 +343,6 @@ static int _Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsi
 	int n = 0;
 
 	unsigned char statues = FALSE;
-	static unsigned int last_len = 0; 
-	static unsigned char ingore_flag = 0;
     unsigned char num=0;
 	int ret_len = 0;
 	unsigned char nbit = 0;
@@ -434,8 +435,8 @@ static int _Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsi
 	}
 	else if(machine_type == 2 )
 	{
-		usleep(50000);
 		n = serial_read(fd,buff,1);
+		usleep(50000);
 		
 		if( n > 0)
 		{	
@@ -463,29 +464,30 @@ static int _Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsi
 	
 
 end:
-	if((ret_len != 0)&&(last_len != 0) && (last_len != ret_len))
-	{
-		ingore_flag = 1;
-	}
-	else if(ret_len == 0)
-	{
-		ingore_flag = 0;
-	}
-	last_len = ret_len;
-	
 	
 	if(ret_len > 0)
 	{
 		HextoStr(buff,ret_len,log_buf);
 		log_write(log_buf);
 	}
-	if((ret_len != buff[0] + 1) || ingore_flag)
+	if((ret_len != buff[0] + 1)|| ret_len == 1)
 		return 0;
 	//printf("ret_len=%d\n",ret_len);
 	return ret_len;
 }
 
-
+/****************************************************************
+名称: Read_Card                           
+功能: 读卡片ID                                   
+输入:  key：密钥
+																														
+                                                                                                                                  
+输出:                                                  
+         buff：数据缓存	
+		len  :缓存长度
+		flag:SET_FLAG(3,0,0)读HID卡号;SET_FLAG(0,0,gpio):读IC卡
+return :读出字节数                                                    
+*****************************************************************/
 int Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsigned int flag)
 {
 	unsigned char block;
@@ -538,6 +540,9 @@ int Read_Card(int fd,unsigned char *key,unsigned char *buff,int len,unsigned int
 			break;
 		case READ_CPU_CARD:
 		
+			break;
+		case READ_HID_CARD:
+			ret = read_hid_card(fd,buff,len);
 			break;
 		default:
 			return 0;

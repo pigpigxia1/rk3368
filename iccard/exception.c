@@ -123,8 +123,10 @@ void handle_proc_sig(int signo){
     // exit(0);//exit process
 }
 
+
 void log_write(unsigned char *str)
 {
+#ifdef ENABLE_LOG
 	char log_cache[512];
 	time_t nowT ;
 	int log_fd = open(LOG_FILE,O_CREAT|O_RDWR,S_IRWXU|S_IRWXG|S_IRWXO);
@@ -140,5 +142,6 @@ void log_write(unsigned char *str)
 		cur_position = 0;  
 	}
 	close(log_fd);
+#endif
 }
 

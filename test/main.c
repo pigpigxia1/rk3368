@@ -13,11 +13,19 @@
 
 #include "string.h"
 #include <unistd.h>
+#include "myi2c.h"
 
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define I2C_FILE_NAME "/dev/i2c-3"
+#define GC2145    0x3c
 
 char *dev = "/sys/bus/i2c/devices/1-0050/eeprom";
 char *spi_dev = "/dev/spidev2.0";
+
 
 const unsigned char new_key[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
 //unsigned char default_key[8] = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
@@ -27,9 +35,11 @@ unsigned char CPU_buff[1024] = {0x00,0x64,0x12,0x23,0x34,0x45,0x56,0x67,0x78,0x8
 int main(int argc, char *argv[])
 {
 #if 1
+	int ret = 0;
 	int fd = -1;
 	int i,n;
 	int cmd;
+	int i2c_fd;
 	//clock_t t1,t2;
 	struct timeval start,end;
 	int len;
@@ -38,24 +48,38 @@ int main(int argc, char *argv[])
 	
 	unsigned char dat_buf[2048] = {0x0};
 	unsigned char *Pbuf = NULL;
+	unsigned char regval = 0;
+	unsigned char id_addr = 0xf0;
 	
 	/*if(argc < 2)
 	{
 		printf("param error!\n");
 		return 0;
 	}*/
-    
+    if ((i2c_fd = open(I2C_FILE_NAME, O_RDWR)) < 0) {
+		printf("Unable to open i2c control file");
+		return -1;
+        	//exit(1);
+	}
+	
+	if(get_i2c_register(i2c_fd, GC2145, id_addr, &regval, 1) < 0)
+	{
+		printf("read id error!\n");
+		return -1;
+	}
+	
+	printf("read gc2145 id :%x\n",regval);
     Delay100us(1000);
                    
     //pcd_Init();                                                         // ¶Á¿¨Ð¾Æ¬³õÊ¼»¯               
     
 	
-	fd = uart_open(9600,8,'N',1);
+	//fd = uart_open(9600,8,'N',1);
 	
-	if(rename(LOG_FILE, LOG_FILE_B) < 0)
+	/* if(rename(LOG_FILE, LOG_FILE_B) < 0)
 	{
 		printf("rename failed\n");
-	}
+	} */
 	//printf("%s_%d\n",__FUNCTION__,__LINE__);
 	
 	//mcu_test(spi_dev);
@@ -93,6 +117,7 @@ int main(int argc, char *argv[])
 	//fd = uart_init(9600,8,'N',1);
 	while(1)
 	{
+		break;
 		/* printf("\nenter cmd:");
 		scanf("%d",&cmd);
 		

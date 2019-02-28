@@ -7,6 +7,7 @@
 #define READ_POLL 0x0
 #define READ_M1_CARD 0x01
 #define READ_CPU_CARD 0x02
+#define READ_HID_CARD 0x03
 #define SET_FLAG(mode,block,gpio) ((block<<24)|(mode<<MASK_LEN)|gpio)
 #define GET_MODE(flag)     ((flag>>MASK_LEN)&0xFF)
 #define GET_BLOCK(flag)     ((flag>>24)&0xFF)

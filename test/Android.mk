@@ -17,6 +17,7 @@ LOCAL_SRC_FILES:=\
 	src/Utility/Utility.c   \
 	src/i2c/eeprom.c   \
 	src/spi/spitest.c   \
+	src/i2c/i2c.c   \
 	main.c
 	
 	

@@ -131,6 +131,7 @@ void exception_raise(const T *e,const char *file,int line);
 #define LOG_FILE   "/sdcard/test.txt"
 #define LOG_FILE_B "/sdcard/test.txt_b"
 #define LOG_CACHE_SIZE 1024*1024*10
+//#define ENABLE_LOG
 
 void log_write(unsigned char *str);
 //#define AAAA ":"

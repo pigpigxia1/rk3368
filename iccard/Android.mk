@@ -15,6 +15,7 @@ LOCAL_SRC_FILES:=\
 	src/IOS14443/type_b.c \
 	src/IOS14443/cpu_card.c \
 	src/Utility/Utility.c   \
+	src/Hid_Card/hid_card.c \
 	main.c
 	
 	

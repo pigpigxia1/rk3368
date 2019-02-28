@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include "uart.h"
 
 
 #define GPIO_MAGIC    'O'
@@ -60,7 +61,7 @@ static void uart_send(int fd,unsigned char regdata)
 {
 	write( fd,&regdata, 1);
 }
-
+/*
 static int set_opt(int fd,int nSpeed,int nBits,char nEvent,int nStop)
 {
     struct termios newtio,oldtio;
@@ -150,7 +151,7 @@ static int set_opt(int fd,int nSpeed,int nBits,char nEvent,int nStop)
     }
     return 0;
 }
-
+*/
 
 static unsigned char uart_read(int fd)
 {
@@ -181,7 +182,8 @@ static unsigned char uart_read(int fd)
 		if (FD_ISSET(fd,&readfs))
 		{
 			
-			read( fd, &dat, 1);
+			if(read( fd, &dat, 1) < 0)
+				return 0;
 			
 		}
 	}
