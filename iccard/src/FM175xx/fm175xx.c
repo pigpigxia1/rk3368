@@ -200,7 +200,7 @@ static unsigned char uart_readbyte(int fd)
 	
 	ret = read( fd, &dat, 1);
 	if(ret < 0)
-		return -1;
+		return FALSE;
 	
 	return dat;
 }
