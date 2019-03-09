@@ -53,7 +53,7 @@ void * Pthread_Serial_Rx( void *arg )
 	printf("start RX\n");
 	while(1)
 	{
-		usleep(200000);
+		usleep(50000);
 		ret = read_pack_rili(S_fd,buff,512);
 		if(ret > 0)
 		{
@@ -67,13 +67,14 @@ void * Pthread_Serial_Rx( void *arg )
 }
 void * Pthread_Serial_Tx( void *arg )
 {
-    int n=0;
+    int n,m;
     //int ret;
+	int datan;
 	fd_set readfs;
     struct termios oldstdio;
 	struct timeval Timeout;
     unsigned char Rx_Data[100];
-    unsigned char Tx_Data[100]={0x55,0x03,0x90,0xB6,0x01,0x00,0xAA};
+    unsigned char Tx_Data[10][100]={0x55,0x03,0x90,0xB6,0x01,0x00,0xAA};
     
     
 	
@@ -82,14 +83,22 @@ void * Pthread_Serial_Tx( void *arg )
 	Timeout.tv_usec = 0;
 	Timeout.tv_sec  = 1;
 	
-	for(n = 2;n < 97;n++)
-	{
-		Tx_Data[n] = n;
+	for(m = 0;m < 5;m++){
+		datan = (m + 1)*20;
+		for(n = 2;n < datan-2;n++)
+		{
+			Tx_Data[m][n] = n;
+		}
+		//Tx_Data[97] = 0x11;
+		Tx_Data[m][0] = 0x55;
+		//Tx_Data[m][10] = 0x55;
+		Tx_Data[m][1] = datan - 4;
+		//Tx_Data[m][datan-5] = 0xAA;
+		Tx_Data[m][datan-2] = xor_check(&Tx_Data[m][2],Tx_Data[m][1]);
+		
+		Tx_Data[m][datan-1] = 0xAA;
 	}
-	Tx_Data[97] = 0x11;
-	Tx_Data[1] = 96;
-	Tx_Data[98] = xor_check(&Tx_Data[2],Tx_Data[1]);
-	Tx_Data[99] = 0xAA;
+	
 	//printf("data xor = %x\n",Tx_Data[5]);
 	/*printf("stop RF\n");
 	Tx_Data[4] = 0x03;  //stop 
@@ -113,8 +122,12 @@ void * Pthread_Serial_Tx( void *arg )
     printf("start TX\n");
     while(1)
     {   
-		serial_sendx(S_fd, Tx_Data, 100);
-		usleep(200000);
+		for(m = 0;m < 5;m++)
+		{
+			serial_sendx(S_fd, Tx_Data[m], (m+1)*20);
+			usleep(200000);
+		}
+		
 		
 		/*ret = read( S_fd, Rx_Data, 100);
 		if(ret > 0)
@@ -154,7 +167,7 @@ void * Pthread_Serial_Tx( void *arg )
 			//printf("read data ret=%d\n",ret);
             Serial_D.len = ret;
             memset( Serial_D.Data, 0, Serial_D.len+3 );
-            memcpy( Serial_D.Data, Rx_Data, Serial_D.len );        
+            memcpy( Serial_D.Data, Rx_Data, Serial_D.len );
             printf("\nread ret = %d %s ",ret,Serial_D.Data);
         }
         else
@@ -211,7 +224,7 @@ int main()
     if( -1==S_fd ) 
         pthread_exit(NULL);
     printf("tty_fd = %d\n",S_fd);
-    ret = set_opt(S_fd,38400,8,'N',1);
+    ret = set_opt(S_fd,115200,8,'N',1);
     if(ret == -1)
     {
          return -1;

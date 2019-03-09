@@ -1,7 +1,7 @@
 #ifndef _RI_UNI_H
 #define _RI_UNI_H
 
-#define CMD_MAX_LEN 512
+#define CMD_MAX_LEN 1024
 #define FRAM_HEAD   0x55
 #define FRAM_TAIL   0xAA
 
