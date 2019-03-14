@@ -94,7 +94,7 @@ void * Pthread_Serial( void *arg )
 		usleep(150000);
 		//sleep(1);
 		
-		ret = select(S_fd+1, &readfs, NULL, NULL, NULL);
+		ret = select(S_fd+1, &readfs, NULL, NULL, &Timeout);
 		if(ret > 0)
 		{
 			if (FD_ISSET(S_fd,&readfs))

@@ -52,6 +52,9 @@ static char *mystrchr(const char *str,char chr,int len)
 }
 
 //注：数据中有0x0使用strchr有问题
+/***************************************
+功能：返回去帧头帧尾后的数据
+****************************************/
 int read_pack_rili(int fd,unsigned char *rx_buff,int len)
 {
 	int ret = 0;
@@ -59,6 +62,10 @@ int read_pack_rili(int fd,unsigned char *rx_buff,int len)
 	unsigned char buff[CMD_MAX_LEN];
 	unsigned char *Pcmd_head;
 	unsigned char *Pcmd_tail;
+	
+	if(fd < 0|| !rx_buff || len < 0){
+		return 0;
+	}
 	
 	memset(buff,0x0,CMD_MAX_LEN);
 	ret = read(fd,buff,CMD_MAX_LEN-1);
